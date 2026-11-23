@@ -684,7 +684,7 @@ $("copy-link").onclick = (e) => copy(e.currentTarget, location.href, "Link copie
 // never the current selection (a new check may still be running for it), and how many it left off pypi.org.
 const counted = (key) => [...new Set(state.result.targets.filter((t) => !state.result.outside_lock.includes(t.python)).map((t) => t[key]))];
 $("copy-share").onclick = (e) => copy(e.currentTarget, shareText(`${state.repo.owner}/${state.repo.name}`, headline(state.result), counted("python"), counted("platform"), location.href, notCheckedCount(state.result)), "Result copied");
-$("copy-prompt").onclick = (e) => copy(e.currentTarget, fixPrompt(`${state.repo.owner}/${state.repo.name}`, state.result, state.fixes, state.pythons, state.platforms, state.gapWheels, state.lab), "Prompt copied");
+$("copy-prompt").onclick = (e) => copy(e.currentTarget, fixPrompt(`${state.repo.owner}/${state.repo.name}`, state.result, state.fixes, state.pythons, state.platforms, state.gapWheels, state.lab, notCheckedCount(state.result)), "Prompt copied");
 $("copy-badge").onclick = (e) => copy(e.currentTarget, $("badge-md").textContent, "Badge Markdown copied");
 $("copy-verdict-badge").onclick = (e) => copy(e.currentTarget, $("badge-md").textContent, "Badge Markdown copied");
 $("copy-gap-wheels").onclick = (e) => copy(e.currentTarget, state.gapWheels.text, "Gap wheel instructions copied");

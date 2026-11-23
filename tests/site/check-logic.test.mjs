@@ -552,6 +552,42 @@ test("fixPrompt reproduces the check", () => {
   assert.match(fixPrompt("o/r", result, null, ["3.14"], ["linux-x86_64"]), /weren't looked up on PyPI/);
 });
 
+test("the fix prompt's confirm command gets the index placeholder only when packages went unchecked", () => {
+  const fixes = { "a==1.0": { found: {}, loses: [] } };
+  const small = { lockfile: "uv.lock", rows: [row("a", "1.0", ["3.14 linux-x86_64"])] };
+  const args = ["o/r", small, fixes, ["3.14"], ["linux-x86_64"]];
+  // Byte-for-byte the prompt from before the unchecked count was an argument.
+  const baseline = [
+    "In o/r, wheelgap found dependencies in uv.lock with no prebuilt wheel for some of the platforms we target (Python 3.14 on linux-x86_64), so they'd be compiled from source or fail to install.",
+    "",
+    "No newer release has a wheel for these (consider dropping the target, another package, or building wheels):",
+    "- a 1.0: 3.14 linux-x86_64",
+    "",
+    "Check each bump against our version constraints (a new major version may need code changes), update the lockfile with the project's own tool, and confirm with:",
+    "  uvx wheelgap uv.lock -p 3.14 -t linux-x86_64",
+    "",
+    "To let the agent check packages itself next time: claude mcp add wheelgap -- uvx --from wheelgap wheelgap-mcp",
+  ].join("\n");
+  assert.equal(fixPrompt(...args), baseline);
+  assert.equal(fixPrompt(...args, null, {}, 0), baseline);
+
+  // Unchecked packages: the confirm command asks where they live, and the prompt never names a real index URL.
+  const prompt = fixPrompt(...args, null, {}, 2);
+  assert.match(prompt, /\n  uvx wheelgap uv\.lock -p 3\.14 -t linux-x86_64 --index-url YOUR_INDEX_URL\n/);
+  assert.match(prompt, /\n  Replace YOUR_INDEX_URL with the URL of your project's own package index\.\n/);
+  assert.doesNotMatch(prompt, /https?:\/\//);
+
+  // No gaps, only unchecked packages: the command still gets the placeholder.
+  const bare = fixPrompt("o/r", { lockfile: "uv.lock", rows: [] }, {}, ["3.14"], ["linux-x86_64"], null, {}, 1);
+  assert.match(bare, /uvx wheelgap uv\.lock -p 3\.14 -t linux-x86_64 --index-url YOUR_INDEX_URL/);
+  assert.match(bare, /Replace YOUR_INDEX_URL/);
+
+  // The unchecked count follows the existing tracker argument.
+  const tracked = fixPrompt(...args, null, { a: { issues_url: "https://github.com/o/a/issues" } }, 1);
+  assert.match(tracked, /ask the maintainers: https:\/\/github\.com\/o\/a\/issues/);
+  assert.match(tracked, /--index-url YOUR_INDEX_URL/);
+});
+
 test("the verdict reads right for one target and many", () => {
   assert.equal(verdictText({ gaps: 1, packages: 77, targets: 1 }), "1 of 77 packages has no wheel for this target");
   assert.equal(verdictText({ gaps: 5, packages: 79, targets: 4 }), "5 of 79 packages have no wheel for at least one of the 4 targets");
